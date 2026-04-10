@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>QuizAI — AI Quiz Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#fafafa;--white:#fff;--accent:#7c3aed;--light:#ede9fe;--border:#e5e7eb;--text:#111;--muted:#6b7280;--green:#16a34a;--red:#dc2626}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);min-height:100vh;padding:2rem 1rem}
+.wrap{max-width:700px;margin:0 auto}
+h1{text-align:center;font-size:2rem;font-weight:800;color:var(--text);margin-bottom:0.5rem}
+.sub{text-align:center;color:var(--muted);margin-bottom:2rem}
+.card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:2rem;margin-bottom:1.5rem}
+.card h2{font-size:1rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem}
+textarea{width:100%;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:inherit;font-size:0.9rem;min-height:120px;resize:vertical;outline:none}
+textarea:focus{border-color:var(--accent)}
+.controls{display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap}
+.controls label{flex:1;min-width:140px}
+.controls label span{display:block;font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:6px}
+.controls select{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px;font-family:inherit;font-size:0.9rem;outline:none}
+.gen-btn{width:100%;margin-top:1rem;padding:13px;background:var(--accent);color:white;border:none;border-radius:12px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer}
+.gen-btn:disabled{opacity:0.5;cursor:not-allowed}
+#quizArea{display:none}
+.q-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem}
+.q-num{font-size:0.85rem;color:var(--muted)}
+.progress-bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width 0.4s}
+.question{font-size:1.1rem;font-weight:700;margin-bottom:1.25rem;line-height:1.5}
+.options{display:flex;flex-direction:column;gap:10px}
+.opt{border:2px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;font-size:0.95rem;font-weight:500;transition:all 0.15s;text-align:left;background:var(--white);font-family:inherit;color:var(--text)}
+.opt:hover:not(:disabled){border-color:var(--accent);background:var(--light)}
+.opt.correct{border-color:var(--green);background:#f0fdf4;color:var(--green)}
+.opt.wrong{border-color:var(--red);background:#fef2f2;color:var(--red)}
+.opt:disabled{cursor:default}
+.explanation{background:var(--light);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 16px;margin-top:1rem;font-size:0.88rem;color:var(--accent);display:none;line-height:1.6}
+.nav-btns{display:flex;justify-content:space-between;margin-top:1.5rem}
+.nav-btn{background:var(--accent);color:white;border:none;border-radius:10px;padding:10px 24px;font-family:inherit;font-weight:600;cursor:pointer;font-size:0.9rem}
+.nav-btn:disabled{opacity:0.3;cursor:not-allowed}
+#scoreCard{display:none;text-align:center}
+.big-score{font-size:4rem;font-weight:800;color:var(--accent)}
+.score-msg{font-size:1.1rem;color:var(--muted);margin:0.5rem 0 1.5rem}
+.retry-btn{background:var(--accent);color:white;border:none;border-radius:12px;padding:12px 28px;font-family:inherit;font-weight:700;font-size:1rem;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧠 QuizAI</h1>
+  <p class="sub">Paste any topic or text — AI generates a quiz instantly</p>
+  <div class="card" id="setupCard">
+    <h2>Generate Quiz</h2>
+    <textarea id="topicInput" placeholder="Paste any topic, text, or notes here...&#10;&#10;Example: 'Python programming concepts like lists, loops, functions, and OOP'&#10;Or paste a whole article/chapter and quiz yourself on it!"></textarea>
+    <div class="controls">
+      <label><span>Number of Questions</span>
+        <select id="numQ"><option value="5">5 questions</option><option value="8" selected>8 questions</option><option value="10">10 questions</option></select>
+      </label>
+      <label><span>Difficulty</span>
+        <select id="diff"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select>
+      </label>
+    </div>
+    <button class="gen-btn" id="genBtn" onclick="generateQuiz()">✦ Generate Quiz</button>
+  </div>
+  <div class="card" id="quizArea">
+    <div class="q-header">
+      <span class="q-num" id="qNum">Question 1 of 8</span>
+      <span class="q-num" id="scoreTrack">Score: 0</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div style="margin-top:1.5rem">
+      <div class="question" id="questionText"></div>
+      <div class="options" id="optionsList"></div>
+      <div class="explanation" id="explanation"></div>
+    </div>
+    <div class="nav-btns">
+      <button class="nav-btn" id="prevBtn" onclick="prev()" disabled>← Prev</button>
+      <button class="nav-btn" id="nextBtn" onclick="next()" disabled>Next →</button>
+    </div>
+  </div>
+  <div class="card" id="scoreCard">
+    <div class="big-score" id="finalScore"></div>
+    <div class="score-msg" id="scoreMsg"></div>
+    <button class="retry-btn" onclick="location.reload()">Try Another Quiz</button>
+  </div>
+</div>
+<script>
+let quiz=[], current=0, score=0, answered=[];
+async function generateQuiz(){
+  const topic=document.getElementById('topicInput').value.trim();
+  if(!topic){alert('Please enter a topic!');return;}
+  const btn=document.getElementById('genBtn');
+  btn.disabled=true; btn.textContent='Generating with AI...';
+  const n=document.getElementById('numQ').value;
+  const diff=document.getElementById('diff').value;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:`Generate a ${diff} difficulty quiz with exactly ${n} multiple choice questions about the given topic. Return ONLY valid JSON array, no markdown, no extra text:
+[{"question":"...","options":["A...","B...","C...","D..."],"correct":0,"explanation":"..."}]
+correct is the index (0-3) of the correct option. Each question must have exactly 4 options.`,
+        messages:[{role:'user',content:topic}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content[0].text.replace(/```json|```/g,'').trim();
+    quiz=JSON.parse(text);
+    answered=new Array(quiz.length).fill(null);
+    document.getElementById('setupCard').style.display='none';
+    document.getElementById('quizArea').style.display='block';
+    renderQ();
+  }catch(e){alert('Error: '+e.message);}
+  btn.disabled=false; btn.textContent='✦ Generate Quiz';
+}
+function renderQ(){
+  const q=quiz[current];
+  document.getElementById('qNum').textContent=`Question ${current+1} of ${quiz.length}`;
+  document.getElementById('scoreTrack').textContent=`Score: ${score}`;
+  document.getElementById('progressFill').style.width=`${((current+1)/quiz.length)*100}%`;
+  document.getElementById('questionText').textContent=q.question;
+  document.getElementById('explanation').style.display='none';
+  const opts=document.getElementById('optionsList');
+  opts.innerHTML=q.options.map((o,i)=>`<button class="opt${answered[current]!==null?getClass(i,q.correct,answered[current]):''}" onclick="answer(${i})" ${answered[current]!==null?'disabled':''}>${o}</button>`).join('');
+  if(answered[current]!==null){document.getElementById('explanation').textContent='💡 '+q.explanation;document.getElementById('explanation').style.display='block';}
+  document.getElementById('prevBtn').disabled=current===0;
+  document.getElementById('nextBtn').disabled=answered[current]===null;
+}
+function getClass(i,correct,chosen){
+  if(i===correct) return ' correct';
+  if(i===chosen&&chosen!==correct) return ' wrong';
+  return '';
+}
+function answer(i){
+  if(answered[current]!==null) return;
+  const q=quiz[current];
+  if(i===q.correct) score++;
+  answered[current]=i;
+  renderQ();
+  if(current===quiz.length-1&&answered.every(a=>a!==null)){
+    setTimeout(()=>showScore(),800);
+  }
+}
+function next(){if(current<quiz.length-1){current++;renderQ();}}
+function prev(){if(current>0){current--;renderQ();}}
+function showScore(){
+  document.getElementById('quizArea').style.display='none';
+  document.getElementById('scoreCard').style.display='block';
+  const pct=Math.round(score/quiz.length*100);
+  document.getElementById('finalScore').textContent=`${score}/${quiz.length}`;
+  document.getElementById('scoreMsg').textContent=pct>=80?'🎉 Excellent! You really know this topic!':pct>=60?'👍 Good job! A little more practice will get you there.':'📚 Keep studying — you got this!';
+}
+</script>
+</body>
+</html>
