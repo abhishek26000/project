@@ -85,70 +85,64 @@ textarea:focus{border-color:var(--accent)}
 </div>
 <script>
 let quiz=[], current=0, score=0, answered=[];
+
 async function generateQuiz(){
   const topic=document.getElementById('topicInput').value.trim();
   if(!topic){alert('Please enter a topic!');return;}
+
   const btn=document.getElementById('genBtn');
-  btn.disabled=true; btn.textContent='Generating with AI...';
+  btn.disabled=true;
+  btn.textContent='Generating with AI...';
+
   const n=document.getElementById('numQ').value;
   const diff=document.getElementById('diff').value;
+
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
+
+    const res = await fetch("https://api.mistral.ai/v1/chat/completions",{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':"Bearer B3GK3tcTZzAHN0msctvYpYLKu0q62gmVh"
+      },
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:1000,
-        system:`Generate a ${diff} difficulty quiz with exactly ${n} multiple choice questions about the given topic. Return ONLY valid JSON array, no markdown, no extra text:
-[{"question":"...","options":["A...","B...","C...","D..."],"correct":0,"explanation":"..."}]
-correct is the index (0-3) of the correct option. Each question must have exactly 4 options.`,
-        messages:[{role:'user',content:topic}]
+        model:'mistral-small-latest',
+        max_tokens:1000,
+        messages:[
+          {
+            role:'system',
+            content:`Generate a ${diff} difficulty quiz with exactly ${n} multiple choice questions about the given topic. Return ONLY valid JSON array:
+[{"question":"...","options":["A","B","C","D"],"correct":0,"explanation":"..."}]`
+          },
+          {
+            role:'user',
+            content:topic
+          }
+        ]
       })
     });
-    const data=await res.json();
-    const text=data.content[0].text.replace(/```json|```/g,'').trim();
-    quiz=JSON.parse(text);
-    answered=new Array(quiz.length).fill(null);
+
+    const data = await res.json();
+
+    const text = data.choices[0].message.content
+      .replace(/```json|```/g,'')
+      .trim();
+
+    quiz = JSON.parse(text);
+
+    answered = new Array(quiz.length).fill(null);
+
     document.getElementById('setupCard').style.display='none';
     document.getElementById('quizArea').style.display='block';
+
     renderQ();
-  }catch(e){alert('Error: '+e.message);}
-  btn.disabled=false; btn.textContent='✦ Generate Quiz';
-}
-function renderQ(){
-  const q=quiz[current];
-  document.getElementById('qNum').textContent=`Question ${current+1} of ${quiz.length}`;
-  document.getElementById('scoreTrack').textContent=`Score: ${score}`;
-  document.getElementById('progressFill').style.width=`${((current+1)/quiz.length)*100}%`;
-  document.getElementById('questionText').textContent=q.question;
-  document.getElementById('explanation').style.display='none';
-  const opts=document.getElementById('optionsList');
-  opts.innerHTML=q.options.map((o,i)=>`<button class="opt${answered[current]!==null?getClass(i,q.correct,answered[current]):''}" onclick="answer(${i})" ${answered[current]!==null?'disabled':''}>${o}</button>`).join('');
-  if(answered[current]!==null){document.getElementById('explanation').textContent='💡 '+q.explanation;document.getElementById('explanation').style.display='block';}
-  document.getElementById('prevBtn').disabled=current===0;
-  document.getElementById('nextBtn').disabled=answered[current]===null;
-}
-function getClass(i,correct,chosen){
-  if(i===correct) return ' correct';
-  if(i===chosen&&chosen!==correct) return ' wrong';
-  return '';
-}
-function answer(i){
-  if(answered[current]!==null) return;
-  const q=quiz[current];
-  if(i===q.correct) score++;
-  answered[current]=i;
-  renderQ();
-  if(current===quiz.length-1&&answered.every(a=>a!==null)){
-    setTimeout(()=>showScore(),800);
+
+  }catch(e){
+    alert('Error: '+e.message);
   }
-}
-function next(){if(current<quiz.length-1){current++;renderQ();}}
-function prev(){if(current>0){current--;renderQ();}}
-function showScore(){
-  document.getElementById('quizArea').style.display='none';
-  document.getElementById('scoreCard').style.display='block';
-  const pct=Math.round(score/quiz.length*100);
-  document.getElementById('finalScore').textContent=`${score}/${quiz.length}`;
-  document.getElementById('scoreMsg').textContent=pct>=80?'🎉 Excellent! You really know this topic!':pct>=60?'👍 Good job! A little more practice will get you there.':'📚 Keep studying — you got this!';
+
+  btn.disabled=false;
+  btn.textContent='✦ Generate Quiz';
 }
 </script>
 </body>
