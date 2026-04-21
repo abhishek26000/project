@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SkyView — Weather App</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:linear-gradient(135deg,#1e3a5f 0%,#16213e 50%,#0f3460 100%);color:white}
+.card{background:rgba(255,255,255,0.1);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.2);border-radius:28px;padding:2.5rem;width:100%;max-width:440px}
+.search{display:flex;gap:10px;margin-bottom:2rem}
+.search input{flex:1;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:12px;padding:12px 16px;color:white;font-family:'Outfit',sans-serif;font-size:1rem;outline:none}
+.search input::placeholder{color:rgba(255,255,255,0.5)}
+.search input:focus{border-color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.2)}
+.search button{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:12px;color:white;padding:12px 18px;cursor:pointer;font-family:'Outfit',sans-serif;font-size:0.95rem;font-weight:600;transition:all 0.2s}
+.search button:hover{background:rgba(255,255,255,0.3)}
+.main-weather{text-align:center;margin-bottom:2rem}
+.weather-icon{font-size:5rem;margin-bottom:0.5rem;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3))}
+.city{font-size:1.5rem;font-weight:700;margin-bottom:0.25rem}
+.country{font-size:0.9rem;color:rgba(255,255,255,0.6);margin-bottom:1rem}
+.temp{font-size:4.5rem;font-weight:800;line-height:1}
+.feels{font-size:0.9rem;color:rgba(255,255,255,0.6);margin-top:0.4rem}
+.desc{font-size:1rem;font-weight:500;margin-top:0.4rem;text-transform:capitalize}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:1.5rem}
+.stat-box{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:1rem;text-align:center}
+.stat-box .icon{font-size:1.5rem;margin-bottom:4px}
+.stat-box .val{font-size:1.1rem;font-weight:700}
+.stat-box .lbl{font-size:0.75rem;color:rgba(255,255,255,0.6);margin-top:2px}
+.forecast{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.f-day{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:12px;text-align:center;flex-shrink:0;width:80px}
+.f-day .day{font-size:0.75rem;color:rgba(255,255,255,0.6);margin-bottom:4px}
+.f-day .icon{font-size:1.4rem;margin-bottom:4px}
+.f-day .tmp{font-size:0.9rem;font-weight:700}
+.loading{text-align:center;padding:2rem;color:rgba(255,255,255,0.6)}
+.error{text-align:center;padding:1rem;color:#fca5a5;font-size:0.9rem}
+#weatherData{display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="search">
+    <input id="cityInput" type="text" placeholder="Search city..." value="Mumbai" onkeydown="if(event.key==='Enter')getWeather()"/>
+    <button onclick="getWeather()">Search</button>
+  </div>
+  <div id="placeholder" style="text-align:center;padding:3rem 0">
+    <div style="font-size:4rem;margin-bottom:1rem">🌍</div>
+    <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">Search any city</div>
+    <div style="font-size:0.85rem;color:rgba(255,255,255,0.5)">Real-time weather powered by Open-Meteo API</div>
+  </div>
+  <div id="loading" class="loading" style="display:none">⏳ Fetching weather...</div>
+  <div id="errorMsg" class="error" style="display:none"></div>
+  <div id="weatherData">
+    <div class="main-weather">
+      <div class="weather-icon" id="wIcon"></div>
+      <div class="city" id="wCity"></div>
+      <div class="country" id="wCountry"></div>
+      <div class="temp" id="wTemp"></div>
+      <div class="desc" id="wDesc"></div>
+      <div class="feels" id="wFeels"></div>
+    </div>
+    <div class="grid">
+      <div class="stat-box"><div class="icon">💧</div><div class="val" id="wHumid"></div><div class="lbl">Humidity</div></div>
+      <div class="stat-box"><div class="icon">💨</div><div class="val" id="wWind"></div><div class="lbl">Wind Speed</div></div>
+      <div class="stat-box"><div class="icon">👁</div><div class="val" id="wVis"></div><div class="lbl">Visibility</div></div>
+      <div class="stat-box"><div class="icon">🌡</div><div class="val" id="wUv"></div><div class="lbl">UV Index</div></div>
+    </div>
+    <div class="forecast" id="forecast"></div>
+  </div>
+</div>
+<script>
+const weatherCodes={0:'☀️ Clear',1:'🌤 Mostly Clear',2:'⛅ Partly Cloudy',3:'☁️ Overcast',45:'🌫 Foggy',48:'🌫 Icy Fog',51:'🌦 Drizzle',53:'🌦 Drizzle',55:'🌧 Heavy Drizzle',61:'🌧 Rain',63:'🌧 Rain',65:'🌧 Heavy Rain',71:'❄️ Snow',80:'🌦 Showers',81:'🌧 Showers',82:'⛈ Heavy Showers',95:'⛈ Thunderstorm'};
+const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+async function getWeather(){
+  const city=document.getElementById('cityInput').value.trim(); if(!city) return;
+  document.getElementById('placeholder').style.display='none';
+  document.getElementById('weatherData').style.display='none';
+  document.getElementById('loading').style.display='block';
+  document.getElementById('errorMsg').style.display='none';
+  try{
+    // Geocode city
+    const geo=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+    const geoData=await geo.json();
+    if(!geoData.results?.length) throw new Error('City not found');
+    const loc=geoData.results[0];
+    // Fetch weather
+    const wx=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m,visibility,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`);
+    const wxData=await wx.json();
+    const c=wxData.current; const d=wxData.daily;
+    document.getElementById('wIcon').textContent=(weatherCodes[c.weather_code]||'🌡').split(' ')[0];
+    document.getElementById('wCity').textContent=loc.name;
+    document.getElementById('wCountry').textContent=`${loc.admin1||''}, ${loc.country||''}`;
+    document.getElementById('wTemp').textContent=`${Math.round(c.temperature_2m)}°C`;
+    document.getElementById('wDesc').textContent=(weatherCodes[c.weather_code]||'Unknown').split(' ').slice(1).join(' ');
+    document.getElementById('wFeels').textContent=`Feels like ${Math.round(c.apparent_temperature)}°C`;
+    document.getElementById('wHumid').textContent=`${c.relative_humidity_2m}%`;
+    document.getElementById('wWind').textContent=`${Math.round(c.wind_speed_10m)} km/h`;
+    document.getElementById('wVis').textContent=`${Math.round((c.visibility||0)/1000)} km`;
+    document.getElementById('wUv').textContent=Math.round(c.uv_index||0);
+    // 7-day forecast
+    document.getElementById('forecast').innerHTML=d.time.map((t,i)=>`
+      <div class="f-day">
+        <div class="day">${i===0?'Today':days[new Date(t).getDay()]}</div>
+        <div class="icon">${(weatherCodes[d.weather_code[i]]||'🌡').split(' ')[0]}</div>
+        <div class="tmp">${Math.round(d.temperature_2m_max[i])}°</div>
+        <div class="lbl">${Math.round(d.temperature_2m_min[i])}°</div>
+      </div>`).join('');
+    document.getElementById('loading').style.display='none';
+    document.getElementById('weatherData').style.display='block';
+  }catch(e){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('errorMsg').textContent='❌ '+e.message;
+    document.getElementById('errorMsg').style.display='block';
+  }
+}
+getWeather();
+</script>
+</body>
+</html>
