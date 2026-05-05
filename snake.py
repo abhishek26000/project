@@ -93,7 +93,7 @@ def main(stdscr):
             head in snake):
             # Game over
             high_score = max(high_score, score)
-            win.addstr(sh // 2, sw // 2 - 10, f"  GAME OVER! Score: {score}  ")
+            win.addstr(sh // 2, sw // 2 - 10, f"  GAME OVER BYE! Score: {score}  ")
             win.addstr(sh // 2 + 1, sw // 2 - 10, "  Press R to restart or Q to quit  ")
             win.refresh()
             while True:
